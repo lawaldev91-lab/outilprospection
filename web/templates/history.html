@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📈 Historique — Outil de Prospection</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          primary: '#6366f1',
+          accent: '#8b5cf6',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  
+  .toggle-switch { position: relative; width: 48px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: .3s; }
+  .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .3s; }
+  input:checked + .toggle-slider { background: #6366f1; }
+  input:checked + .toggle-slider:before { transform: translateX(24px); }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-300">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="/" class="text-3xl hover:scale-110 transition">🔍</a>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Historique & Analyses
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Suivi des performances jour après jour</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <a href="/" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition">
+          ← Retour au dashboard
+        </a>
+        
+        <div class="flex items-center gap-2">
+          <span class="text-sm">☀️</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="text-sm">🌙</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    
+    <!-- Période -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold mb-1">📊 Période d'analyse</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Sélectionnez la période pour les comparaisons
+          </p>
+        </div>
+        
+        <div class="flex gap-2">
+          <button onclick="changePeriod(7)" class="period-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition text-sm">
+            7 jours
+          </button>
+          <button onclick="changePeriod(14)" class="period-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition text-sm">
+            14 jours
+          </button>
+          <button onclick="changePeriod(30)" class="period-btn active px-4 py-2 rounded-lg bg-primary text-white font-medium text-sm">
+            30 jours
+          </button>
+          <button onclick="changePeriod(90)" class="period-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition text-sm">
+            90 jours
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats globales -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Sessions</div>
+        <div class="text-3xl font-bold text-primary" id="stat-sessions">—</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Total résultats</div>
+        <div class="text-3xl font-bold text-green-500" id="stat-total">—</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Moyenne / session</div>
+        <div class="text-3xl font-bold text-accent" id="stat-avg">—</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700">
+        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Meilleur jour</div>
+        <div class="text-3xl font-bold text-orange-500" id="stat-best">—</div>
+        <div class="text-xs text-slate-400 mt-1" id="stat-best-date"></div>
+      </div>
+    </section>
+
+    <!-- Graphiques -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      
+      <!-- Évolution des résultats -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+        <h3 class="text-lg font-semibold mb-4">📈 Évolution des résultats</h3>
+        <div class="h-64">
+          <canvas id="chart-evolution"></canvas>
+        </div>
+      </div>
+
+      <!-- Répartition par source -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+        <h3 class="text-lg font-semibold mb-4">📡 Répartition par source</h3>
+        <div class="h-64">
+          <canvas id="chart-sources"></canvas>
+        </div>
+      </div>
+
+      <!-- Catégories détectées -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+        <h3 class="text-lg font-semibold mb-4">🎯 Catégories détectées</h3>
+        <div class="h-64">
+          <canvas id="chart-categories"></canvas>
+        </div>
+      </div>
+
+      <!-- Performance par source -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+        <h3 class="text-lg font-semibold mb-4">⚡ Performance moyenne par source</h3>
+        <div class="h-64">
+          <canvas id="chart-performance"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historique détaillé -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
+      <h2 class="text-lg font-semibold mb-4">📋 Historique détaillé</h2>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-200 dark:border-slate-700">
+              <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Date</th>
+              <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Résultats</th>
+              <th class="text-right py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Durée</th>
+              <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Sources</th>
+              <th class="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-300">Top catégories</th>
+            </tr>
+          </thead>
+          <tbody id="history-table">
+            <tr>
+              <td colspan="5" class="text-center py-8 text-slate-400">
+                Chargement...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+<script>
+let currentPeriod = 30;
+let charts = {};
+
+// Theme
+function toggleTheme() {
+  document.documentElement.classList.toggle('dark');
+  localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  updateChartsTheme();
+}
+
+if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.classList.add('dark');
+  document.getElementById('theme-toggle').checked = true;
+}
+
+function updateChartsTheme() {
+  const isDark = document.documentElement.classList.contains('dark');
+  Object.values(charts).forEach(chart => {
+    chart.options.scales.x.ticks.color = isDark ? '#94a3b8' : '#64748b';
+    chart.options.scales.y.ticks.color = isDark ? '#94a3b8' : '#64748b';
+    chart.options.scales.x.grid.color = isDark ? 'rgba(148,163,184,0.1)' : 'rgba(100,116,139,0.1)';
+    chart.options.scales.y.grid.color = isDark ? 'rgba(148,163,184,0.1)' : 'rgba(100,116,139,0.1)';
+    chart.update();
+  });
+}
+
+function changePeriod(days) {
+  currentPeriod = days;
+  
+  // Update buttons
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.classList.remove('active', 'bg-primary', 'text-white', 'font-medium');
+    btn.classList.add('border', 'border-slate-300', 'dark:border-slate-600');
+  });
+  event.target.classList.add('active', 'bg-primary', 'text-white', 'font-medium');
+  
+  loadData();
+}
+
+async function loadData() {
+  try {
+    // Charger la comparaison
+    const compResp = await fetch(`/api/history/comparison?days=${currentPeriod}`);
+    const compData = await compResp.json();
+    
+    // Charger l'historique
+    const histResp = await fetch(`/api/history?days=${currentPeriod}`);
+    const histData = await histResp.json();
+    
+    // Charger les stats par source
+    const srcResp = await fetch(`/api/history/sources?days=${currentPeriod}`);
+    const srcData = await srcResp.json();
+    
+    updateStats(compData);
+    updateCharts(compData, srcData);
+    updateTable(histData.history);
+    
+  } catch (e) {
+    console.error('Erreur chargement:', e);
+  }
+}
+
+function updateStats(data) {
+  document.getElementById('stat-sessions').textContent = data.sessions;
+  document.getElementById('stat-total').textContent = data.total_results;
+  document.getElementById('stat-avg').textContent = data.avg_results;
+  
+  if (data.best_day) {
+    document.getElementById('stat-best').textContent = data.best_day.count;
+    document.getElementById('stat-best-date').textContent = data.best_day.date;
+  } else {
+    document.getElementById('stat-best').textContent = '—';
+    document.getElementById('stat-best-date').textContent = '';
+  }
+}
+
+function updateCharts(compData, srcData) {
+  const isDark = document.documentElement.classList.contains('dark');
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const gridColor = isDark ? 'rgba(148,163,184,0.1)' : 'rgba(100,116,139,0.1)';
+  
+  // Détruire les anciens graphiques
+  Object.values(charts).forEach(chart => chart.destroy());
+  charts = {};
+  
+  // Évolution des résultats
+  const evolutionCtx = document.getElementById('chart-evolution').getContext('2d');
+  charts.evolution = new Chart(evolutionCtx, {
+    type: 'line',
+    data: {
+      labels: compData.results_evolution.map(r => r.date),
+      datasets: [{
+        label: 'Résultats',
+        data: compData.results_evolution.map(r => r.count),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.1)',
+        tension: 0.4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
+  
+  // Répartition par source
+  const sourcesCtx = document.getElementById('chart-sources').getContext('2d');
+  const sourceLabels = Object.keys(srcData.sources);
+  const sourceTotals = sourceLabels.map(s => srcData.sources[s].total);
+  
+  charts.sources = new Chart(sourcesCtx, {
+    type: 'doughnut',
+    data: {
+      labels: sourceLabels,
+      datasets: [{
+        data: sourceTotals,
+        backgroundColor: [
+          '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
+          '#10b981', '#06b6d4', '#3b82f6'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: textColor }
+        }
+      }
+    }
+  });
+  
+  // Catégories détectées
+  const categoriesCtx = document.getElementById('chart-categories').getContext('2d');
+  const categoriesData = {};
+  histData.history.forEach(session => {
+    Object.entries(session.categories).forEach(([cat, count]) => {
+      categoriesData[cat] = (categoriesData[cat] || 0) + count;
+    });
+  });
+  
+  charts.categories = new Chart(categoriesCtx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(categoriesData),
+      datasets: [{
+        label: 'Occurrences',
+        data: Object.values(categoriesData),
+        backgroundColor: 'rgba(139,92,246,0.6)',
+        borderColor: '#8b5cf6',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
+  
+  // Performance par source
+  const perfCtx = document.getElementById('chart-performance').getContext('2d');
+  const perfLabels = Object.keys(srcData.sources);
+  const perfAverages = perfLabels.map(s => srcData.sources[s].avg);
+  
+  charts.performance = new Chart(perfCtx, {
+    type: 'bar',
+    data: {
+      labels: perfLabels,
+      datasets: [{
+        label: 'Moyenne / session',
+        data: perfAverages,
+        backgroundColor: 'rgba(16,185,129,0.6)',
+        borderColor: '#10b981',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true },
+        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function updateTable(history) {
+  const tbody = document.getElementById('history-table');
+  
+  if (history.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="text-center py-8 text-slate-400">
+          Aucune session enregistrée
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  tbody.innerHTML = history.map(session => {
+    const sources = Object.keys(session.sources).join(', ');
+    const categories = Object.entries(session.categories)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([cat, count]) => `${cat} (${count})`)
+      .join(', ');
+    
+    return `
+      <tr class="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+        <td class="py-3 px-4 text-sm font-medium">${session.date}</td>
+        <td class="py-3 px-4 text-sm text-right">
+          <span class="inline-block px-2 py-1 rounded bg-primary/10 text-primary font-semibold">
+            ${session.results_count}
+          </span>
+        </td>
+        <td class="py-3 px-4 text-sm text-right text-slate-500">${session.duration.toFixed(1)}s</td>
+        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">${sources}</td>
+        <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">${categories || '—'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Init
+loadData();
+</script>
+</body>
+</html>

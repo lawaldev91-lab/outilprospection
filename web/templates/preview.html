@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outil de Prospection v2.0 - Preview</title>
+<style>
+/* Reset & Base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --primary: #6366f1;
+  --primary-light: rgba(99,102,241,0.1);
+  --accent: #8b5cf6;
+  --success: #10b981;
+  --success-light: rgba(16,185,129,0.1);
+  --warning: #f59e0b;
+  --warning-light: rgba(245,158,11,0.1);
+  --danger: #ef4444;
+  --radius: 12px;
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
+}
+
+html.dark {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface2: #334155;
+  --border: #475569;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --primary: #818cf8;
+  --primary-light: rgba(129,140,248,0.15);
+  --accent: #a78bfa;
+  --success-light: rgba(16,185,129,0.2);
+  --warning-light: rgba(245,158,11,0.2);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Header */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  backdrop-filter: blur(12px);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  font-size: 32px;
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.status-badge.running {
+  background: var(--success-light);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-track {
+  width: 48px;
+  height: 26px;
+  background: var(--border);
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.toggle-track.active {
+  background: var(--primary);
+}
+
+.toggle-thumb {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-track.active .toggle-thumb {
+  transform: translateX(22px);
+}
+
+/* Main content */
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Control panel */
+.control-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+
+.control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.control-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.control-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-secondary.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* Progress */
+.progress-section {
+  display: none;
+  margin-top: 20px;
+}
+
+.progress-section.visible {
+  display: block;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.progress-label {
+  color: var(--text-muted);
+}
+
+.progress-count {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  width: 0%;
+}
+
+.source-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.source-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.source-pill.done {
+  background: var(--success-light);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.source-pill.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-value.primary { color: var(--primary); }
+.stat-value.success { color: var(--success); }
+.stat-value.accent { color: var(--accent); }
+.stat-value.warning { color: var(--warning); }
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Filters */
+.filters-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.search-input {
+  margin-left: auto;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  min-width: 200px;
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+}
+
+/* Results grid */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.results-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.results-count {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.result-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.result-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.score-badge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.score-badge.high {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.score-badge.medium {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.result-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.result-tag {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid rgba(99,102,241,0.2);
+}
+
+.result-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.source-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+.contact-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  background: var(--success-light);
+  color: var(--success);
+  font-weight: 500;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-size: 18px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.empty-text {
+  font-size: 14px;
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 20px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 24px;
+}
+
+/* Fade in animation */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Nav link */
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <span class="logo">🔍</span>
+      <div>
+        <div class="header-title">Outil de Prospection v2.0</div>
+        <div class="header-subtitle">Recherche automatique de prestataires</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="statusBadge" class="status-badge">️ Inactif</div>
+      <a href="#" class="nav-link">📈 Historique</a>
+      <div class="theme-toggle" onclick="toggleTheme()">
+        <span>☀️</span>
+        <div id="toggleTrack" class="toggle-track">
+          <div class="toggle-thumb"></div>
+        </div>
+        <span>🌙</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Control Panel -->
+  <section class="control-panel">
+    <div class="control-header">
+      <div>
+        <div class="control-title">🎯 Contrôle du scraping</div>
+        <div class="control-subtitle">Lancez une recherche sur toutes les sources actives</div>
+      </div>
+      <div class="btn-group">
+        <button id="btnStart" class="btn btn-primary" onclick="startScraping()">▶️ Démarrer</button>
+        <button id="btnStop" class="btn btn-danger" disabled onclick="stopScraping()">⏹️ Arrêter</button>
+      </div>
+    </div>
+
+    <div id="progressSection" class="progress-section">
+      <div class="progress-header">
+        <span id="progressLabel" class="progress-label">Préparation...</span>
+        <span id="progressCount" class="progress-count"></span>
+      </div>
+      <div class="progress-bar-bg">
+        <div id="progressBar" class="progress-bar-fill"></div>
+      </div>
+      <div id="sourcePills" class="source-pills"></div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value primary" id="statResults">0</div>
+      <div class="stat-label">Résultats</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value success" id="statSources">0</div>
+      <div class="stat-label">Sources</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent" id="statCats">0</div>
+      <div class="stat-label">Catégories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value warning" id="statDuration">—</div>
+      <div class="stat-label">Durée</div>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="filters-section">
+    <div class="filters-row">
+      <span class="filter-label">Filtres :</span>
+      <button class="btn btn-secondary active" onclick="filterCat('all', this)">Toutes</button>
+      <button class="btn btn-secondary" onclick="filterCat('Site Web', this)">🌐 Site Web</button>
+      <button class="btn btn-secondary" onclick="filterCat('Chatbot', this)">🤖 Chatbot</button>
+      <button class="btn btn-secondary" onclick="filterCat('Automatisation', this)">⚙️ Automatisation</button>
+      <button class="btn btn-secondary" onclick="filterCat('Montage Vidéo', this)">🎬 Vidéo</button>
+      <button class="btn btn-secondary" onclick="filterCat('Réseaux Sociaux', this)">📱 Réseaux</button>
+      <button class="btn btn-secondary" onclick="filterCat('Modélisation 3D', this)">🧊 3D</button>
+      <input type="text" class="search-input" placeholder="🔍 Rechercher..." oninput="searchResults(this.value)">
+      <button class="btn btn-primary" onclick="exportCSV()" style="padding: 8px 16px;">⬇️ CSV</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section>
+    <div class="results-header">
+      <h2 class="results-title">📋 Résultats</h2>
+      <span id="resultsCount" class="results-count"></span>
+    </div>
+    <div id="resultsGrid" class="results-grid">
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">Aucun résultat pour le moment</div>
+        <div class="empty-text">Cliquez sur "▶️ Démarrer" pour lancer une prospection</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  Outil de Prospection v2.0 — Sources : Free-work, Alsacréations, Remotive, RemoteOK, Himalayas, Hacker News
+</footer>
+
+<script>
+// Mock data representing real results
+const MOCK_RESULTS = [
+  {
+    title: "Expert Technique MOCO – Data Center",
+    body: "Dans le cadre du déploiement de nouveaux sites data center, nous recherchons un expert technique disposant d'une expertise pluridisciplinaire en conception et construction d'infrastructures techniques.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 10,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:4}]
+  },
+  {
+    title: "Offre de job développement commercial marketing web rédacteur SEO",
+    body: "Stage télétravail - Mission de développement commercial et marketing web avec rédaction SEO pour une entreprise en croissance.",
+    source: "Alsacréations",
+    date: "il y a 3 mois",
+    score: 8,
+    url: "#",
+    contact: "",
+    categories: [{name:"Site Web", icon:"🌐", keyword_hits:2}, {name:"Réseaux Sociaux", icon:"📱", keyword_hits:1}]
+  },
+  {
+    title: "Consultant BI / Data Engineer Confirmé – Spark / SQL / Databricks",
+    body: "Mission freelance chez ENEDIS à Lyon. Équipe data/BI en charge de la mise en place de l'architecture décisionnelle : datawarehouse, datamarts, traitements de données.",
+    source: "Free-work",
+    date: "08/27/2026",
+    score: 8,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:4}, {name:"Modélisation 3D", icon:"🧊", keyword_hits:1}]
+  },
+  {
+    title: "Développeur Sénior Full Stack Python / Oracle – Trading",
+    body: "Mission freelance 6 mois, 550-700€/jour à Paris. Environnement international au cœur des activités de trading et de gestion d'actifs.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 9,
+    url: "#",
+    contact: "",
+    categories: [{name:"Site Web", icon:"🌐", keyword_hits:3}, {name:"Automatisation", icon:"⚙️", keyword_hits:2}]
+  },
+  {
+    title: "Architecte Technique / Solutions .NET / Azure – Cloud",
+    body: "Mission freelance 1 an, 500-600€/jour à Paris. Environnement cloud Azure, architecture .NET, API, microservices et infrastructure as code.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 7,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:3}]
+  },
+  {
+    title: "Consultant Cybersécurité Junior à Lyon",
+    body: "Prestation cybersécurité 36 mois, 400-410€/jour. Analyse et traitement du run cyber, incidents, SOC applicatif et contrôles cybersécurité.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 7,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:2}]
+  },
+  {
+    title: "QA Analyst / Testeur Fonctionnel & Automatisation",
+    body: "Mission freelance 12 mois, 400-450€/jour à Paris. Maintenance évolutive et corrective d'applications critiques du domaine finance et comptabilité.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 9,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:4}]
+  },
+  {
+    title: "Expert Architecture Dynatrace & SRE",
+    body: "Mission freelance 1 an, Centre-Val de Loire. Renforcement de la démarche d'observabilité IT et SRE avec Dynatrace.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 8,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:3}]
+  },
+  {
+    title: "Consultant Dynatrace / Support Pilotage & Suivi du RUN",
+    body: "Mission freelance 1 an, 440-550€/jour à Niort. Expertise Dynatrace pour environnements de production critiques.",
+    source: "Free-work",
+    date: "08/26/2026",
+    score: 7,
+    url: "#",
+    contact: "",
+    categories: [{name:"Automatisation", icon:"⚙️", keyword_hits:2}]
+  }
+];
+
+let allResults = [];
+let currentFilter = 'all';
+let currentSearch = '';
+let scrapingInterval = null;
+
+// Theme
+function toggleTheme() {
+  document.documentElement.classList.toggle('dark');
+  document.getElementById('toggleTrack').classList.toggle('active');
+}
+
+// Scraping simulation
+function startScraping() {
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('progressSection').classList.add('visible');
+  document.getElementById('statusBadge').textContent = '⏳ En cours...';
+  document.getElementById('statusBadge').className = 'status-badge running';
+  
+  const sources = ['reddit', 'alsacreations', 'freework', 'remoteok', 'himalayas', 'hackernews', 'remotive'];
+  let current = 0;
+  let progress = 0;
+  const totalPosts = [0, 1, 9, 59, 79, 84, 102];
+  
+  const sourcePills = document.getElementById('sourcePills');
+  sourcePills.innerHTML = sources.map(s => 
+    `<span class="source-pill" data-src="${s}">${s}</span>`
+  ).join('');
+  
+  scrapingInterval = setInterval(() => {
+    if (current < sources.length) {
+      progress = Math.round(((current + 1) / sources.length) * 100);
+      
+      document.getElementById('progressBar').style.width = progress + '%';
+      document.getElementById('progressLabel').textContent = `Scraping : ${sources[current]}`;
+      document.getElementById('progressCount').textContent = `${current+1}/${sources.length} sources — ${totalPosts[current]} posts`;
+      
+      document.querySelectorAll('.source-pill').forEach((pill, i) => {
+        if (i < current) pill.className = 'source-pill done';
+        if (i === current) pill.className = 'source-pill active';
+      });
+      
+      current++;
+    } else {
+      clearInterval(scrapingInterval);
+      
+      // Show results
+      allResults = MOCK_RESULTS;
+      document.getElementById('progressLabel').textContent = '✅ Collecte terminée !';
+      document.getElementById('progressCount').textContent = '7/7 sources — 102 posts — 9 pertinents';
+      document.querySelectorAll('.source-pill').forEach(p => p.className = 'source-pill done');
+      
+      document.getElementById('statusBadge').textContent = '️ Inactif';
+      document.getElementById('statusBadge').className = 'status-badge';
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnStop').disabled = true;
+      
+      renderResults();
+      updateStats(102, 7, 6, 10.2);
+    }
+  }, 800);
+}
+
+function stopScraping() {
+  clearInterval(scrapingInterval);
+  document.getElementById('progressLabel').textContent = '⏹️ Arrêté par l\'utilisateur';
+  document.getElementById('statusBadge').textContent = '⏸️ Inactif';
+  document.getElementById('statusBadge').className = 'status-badge';
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+}
+
+function updateStats(results, sources, cats, duration) {
+  document.getElementById('statResults').textContent = results;
+  document.getElementById('statSources').textContent = sources;
+  document.getElementById('statCats').textContent = cats;
+  document.getElementById('statDuration').textContent = duration + 's';
+}
+
+function filterCat(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.btn-secondary').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderResults();
+}
+
+function searchResults(query) {
+  currentSearch = query.toLowerCase();
+  renderResults();
+}
+
+function renderResults() {
+  let items = [...allResults];
+  
+  if (currentFilter !== 'all') {
+    items = items.filter(r => r.categories.some(c => c.name === currentFilter));
+  }
+  
+  if (currentSearch) {
+    items = items.filter(r => 
+      r.title.toLowerCase().includes(currentSearch) || 
+      r.body.toLowerCase().includes(currentSearch) ||
+      r.source.toLowerCase().includes(currentSearch)
+    );
+  }
+  
+  document.getElementById('resultsCount').textContent = items.length + ' résultat' + (items.length > 1 ? 's' : '');
+  
+  const grid = document.getElementById('resultsGrid');
+  
+  if (items.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1;">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">Aucun résultat</div>
+        <div class="empty-text">Modifiez vos filtres ou lancez une nouvelle prospection</div>
+      </div>`;
+    return;
+  }
+  
+  grid.innerHTML = items.map(r => {
+    const scoreClass = r.score >= 7 ? 'high' : r.score >= 4 ? 'medium' : '';
+    
+    const cats = r.categories.map(c => 
+      `<span class="result-tag">${c.icon} ${c.name}</span>`
+    ).join('');
+    
+    const contact = r.contact 
+      ? `<span class="contact-badge">📧 Contact</span>`
+      : '';
+    
+    return `
+      <div class="result-card fade-in">
+        <div class="result-card-header">
+          <div class="result-title">${escHtml(r.title)}</div>
+          <span class="score-badge ${scoreClass}">${r.score}/10</span>
+        </div>
+        <div class="result-body">${escHtml(r.body)}</div>
+        <div class="result-tags">${cats}</div>
+        <div class="result-footer">
+          <span class="source-dot"></span>
+          <span>${escHtml(r.source)}</span>
+          ${r.date ? `<span>·</span><span>${r.date}</span>` : ''}
+          ${contact}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function exportCSV() {
+  if (allResults.length === 0) {
+    alert('Aucun résultat à exporter');
+    return;
+  }
+  alert('Export CSV : ' + allResults.length + ' résultats téléchargés !');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔍 Outil de Prospection v2.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          primary: '#6366f1',
+          accent: '#8b5cf6',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  body { font-family: 'Inter', system-ui, sans-serif; }
+  
+  .spinner { border: 3px solid rgba(99,102,241,.2); border-top-color: #6366f1; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  .fade-in { animation: fadeIn 0.3s ease-in; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  
+  .progress-bar { transition: width 0.5s ease; }
+  
+  /* Toggle switch */
+  .toggle-switch { position: relative; width: 48px; height: 24px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: .3s; }
+  .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .3s; }
+  input:checked + .toggle-slider { background: #6366f1; }
+  input:checked + .toggle-slider:before { transform: translateX(24px); }
+</style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-300">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🔍</span>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Outil de Prospection
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Recherche automatique de prestataires</p>
+        </div>
+      </div>
+      
+        <div class="flex items-center gap-4">
+        <!-- Status badge -->
+        <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+          ⏸️ Inactif
+        </div>
+        
+        <!-- Lien historique -->
+        <a href="/history" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary transition">
+          📈 Historique
+        </a>
+        
+        <!-- Dark mode toggle -->
+        <div class="flex items-center gap-2">
+          <span class="text-sm">☀️</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="text-sm">🌙</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    
+    <!-- Control Panel -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold mb-1">🎯 Contrôle du scraping</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Lancez une recherche sur toutes les sources actives
+          </p>
+        </div>
+        
+        <div class="flex gap-3">
+          <button id="btn-start" onclick="startScraping()"
+            class="px-6 py-2.5 bg-gradient-to-r from-primary to-accent text-white font-medium rounded-lg 
+                   hover:opacity-90 transition shadow-lg shadow-primary/20 flex items-center gap-2">
+            <span>▶️</span> Démarrer
+          </button>
+          <button id="btn-stop" onclick="stopScraping()" disabled
+            class="px-6 py-2.5 bg-red-500 text-white font-medium rounded-lg 
+                   hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+            <span>⏹️</span> Arrêter
+          </button>
+        </div>
+      </div>
+      
+      <!-- Progress bar -->
+      <div id="progress-section" class="mt-6 hidden">
+        <div class="flex justify-between text-sm mb-2">
+          <span id="progress-text" class="text-slate-600 dark:text-slate-300">Préparation...</span>
+          <span id="progress-count" class="text-slate-500 dark:text-slate-400"></span>
+        </div>
+        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+          <div id="progress-bar" class="progress-bar bg-gradient-to-r from-primary to-accent h-full rounded-full" style="width: 0%"></div>
+        </div>
+        <div id="sources-status" class="mt-3 flex flex-wrap gap-2"></div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+        <div class="text-2xl font-bold text-primary" id="stat-total">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400">Résultats</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+        <div class="text-2xl font-bold text-green-500" id="stat-sources">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400">Sources</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+        <div class="text-2xl font-bold text-accent" id="stat-categories">0</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400">Catégories</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+        <div class="text-2xl font-bold text-orange-500" id="stat-duration">—</div>
+        <div class="text-sm text-slate-500 dark:text-slate-400">Durée</div>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-sm font-medium text-slate-500 dark:text-slate-400">Filtres :</span>
+        
+        <button onclick="filterBy('all')" class="filter-btn active px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          Toutes
+        </button>
+        <button onclick="filterBy('Site Web')" class="filter-btn px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          🌐 Site Web
+        </button>
+        <button onclick="filterBy('Chatbot')" class="filter-btn px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          🤖 Chatbot
+        </button>
+        <button onclick="filterBy('Automatisation')" class="filter-btn px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          ⚙️ Automatisation
+        </button>
+        <button onclick="filterBy('Montage Vidéo')" class="filter-btn px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          🎬 Vidéo
+        </button>
+        <button onclick="filterBy('Réseaux Sociaux')" class="filter-btn px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          📱 Réseaux
+        </button>
+        <button onclick="filterBy('Modélisation 3D')" class="filter-btn px-3 py-1.5 rounded-full text-sm border border-slate-300 dark:border-slate-600 hover:border-primary hover:text-primary transition">
+          🧊 3D
+        </button>
+        
+        <div class="ml-auto flex gap-2">
+          <input type="text" id="search-input" placeholder="🔍 Rechercher..." 
+            class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:outline-none focus:border-primary"
+            oninput="searchResults(this.value)">
+          <button onclick="exportCSV()" class="px-3 py-1.5 rounded-lg bg-primary text-white text-sm hover:opacity-90 transition">
+            ⬇️ CSV
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Custom URL Scraper -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-semibold">🔗 Scraping d'URL personnalisée</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Analysez n'importe quel lien pour y trouver des opportunités
+          </p>
+        </div>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            URL(s) à analyser (une par ligne, max 10)
+          </label>
+          <textarea 
+            id="custom-urls" 
+            rows="3" 
+            placeholder="https://exemple.com/offres&#10;https://job-board.com/missions&#10;https://forum.com/demandes-freelance"
+            class="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition resize-none"
+          ></textarea>
+        </div>
+        
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-2">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="strict-filter" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+            <span class="text-sm text-slate-600 dark:text-slate-300">Filtrage strict (100% français)</span>
+          </div>
+          
+          <button 
+            id="btn-custom-scrape"
+            onclick="scrapeCustomUrl()" 
+            class="px-6 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-lg hover:opacity-90 transition shadow-lg shadow-green-500/20 flex items-center gap-2"
+          >
+            <span>🔍</span> Analyser les URLs
+          </button>
+        </div>
+      </div>
+      
+      <!-- Custom scraping results -->
+      <div id="custom-results-section" class="mt-6 hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-slate-700 dark:text-slate-200">
+            Résultats de l'analyse
+          </h3>
+          <div id="custom-stats" class="text-sm text-slate-500"></div>
+        </div>
+        
+        <div id="custom-progress" class="hidden mb-4">
+          <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span class="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+            <span id="custom-progress-text">Analyse en cours...</span>
+          </div>
+        </div>
+        
+        <div id="custom-error" class="hidden mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300"></div>
+        
+        <div id="custom-results-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">📋 Résultats de prospection</h2>
+        <span id="results-count" class="text-sm text-slate-500 dark:text-slate-400"></span>
+      </div>
+      
+      <div id="results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Empty state -->
+        <div class="col-span-full text-center py-16 text-slate-400 dark:text-slate-500">
+          <div class="text-5xl mb-4">🔍</div>
+          <p class="text-lg">Aucun résultat pour le moment</p>
+          <p class="text-sm">Cliquez sur "Démarrer" ou analysez une URL personnalisée</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-700 mt-12 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+    <p>Outil de Prospection v2.0 — Sources : Free-work, Alsacréations, Remotive, RemoteOK, Himalayas, Hacker News</p>
+  </footer>
+
+<script>
+// ── State ──
+let allResults = [];
+let currentFilter = 'all';
+let currentSearch = '';
+let pollInterval = null;
+
+// ── Theme ──
+function toggleTheme() {
+  document.documentElement.classList.toggle('dark');
+  localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+}
+
+// Init theme
+if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.classList.add('dark');
+  document.getElementById('theme-toggle').checked = true;
+}
+
+// ── API calls ──
+async function startScraping() {
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('btn-stop').disabled = false;
+  document.getElementById('progress-section').classList.remove('hidden');
+  updateStatus('running');
+  
+  try {
+    const resp = await fetch('/api/start', { method: 'POST' });
+    const data = await resp.json();
+    if (!data.success) {
+      alert(data.error);
+      resetButtons();
+    }
+  } catch (e) {
+    console.error(e);
+    resetButtons();
+  }
+  
+  // Polling pour la progression
+  pollInterval = setInterval(pollStatus, 1000);
+}
+
+async function stopScraping() {
+  try {
+    await fetch('/api/stop', { method: 'POST' });
+    document.getElementById('btn-stop').disabled = true;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function pollStatus() {
+  try {
+    const resp = await fetch('/api/status');
+    const data = await resp.json();
+    
+    updateProgress(data.progress);
+    
+    if (!data.running) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      resetButtons();
+      updateStatus('idle');
+      
+      // Charger les résultats
+      await loadResults();
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function loadResults() {
+  try {
+    const resp = await fetch('/api/results');
+    const data = await resp.json();
+    allResults = data.results || [];
+    renderResults();
+    updateStats();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ── UI Updates ──
+function updateStatus(state) {
+  const badge = document.getElementById('status-badge');
+  if (state === 'running') {
+    badge.innerHTML = '<span class="spinner mr-1"></span> En cours...';
+    badge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+  } else {
+    badge.textContent = '⏸️ Inactif';
+    badge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+  }
+}
+
+function updateProgress(progress) {
+  if (!progress) return;
+  
+  const total = progress.total_sources || 1;
+  const completed = (progress.completed_sources || []).length;
+  const pct = Math.round((completed / total) * 100);
+  
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = progress.current_source 
+    ? `Scraping : ${progress.current_source}` 
+    : 'Préparation...';
+  document.getElementById('progress-count').textContent = `${completed}/${total} sources — ${progress.posts_scraped || 0} posts`;
+  
+  // Sources status pills
+  const container = document.getElementById('sources-status');
+  const allSources = ['hackernews', 'freework', 'alsacreations', 'remotive', 'remoteok', 'himalayas'];
+  container.innerHTML = allSources.map(s => {
+    const done = (progress.completed_sources || []).includes(s);
+    const current = progress.current_source === s;
+    let cls = 'bg-slate-100 dark:bg-slate-700 text-slate-400';
+    if (done) cls = 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400';
+    if (current) cls = 'bg-primary/20 text-primary';
+    return `<span class="px-2 py-1 rounded-full text-xs ${cls}">${s}</span>`;
+  }).join('');
+}
+
+function resetButtons() {
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('btn-stop').disabled = true;
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allResults.length;
+  
+  const sources = new Set(allResults.map(r => r.source));
+  document.getElementById('stat-sources').textContent = sources.size;
+  
+  const cats = new Set();
+  allResults.forEach(r => r.categories.forEach(c => cats.add(c.name)));
+  document.getElementById('stat-categories').textContent = cats.size;
+  
+  document.getElementById('stat-duration').textContent = allResults.length > 0 
+    ? `${allResults.length} opportunités` : '—';
+}
+
+// ── Filtering & Rendering ──
+function filterBy(category) {
+  currentFilter = category;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active', 'bg-primary', 'text-white'));
+  event.target.classList.add('active', 'bg-primary', 'text-white');
+  renderResults();
+}
+
+function searchResults(query) {
+  currentSearch = query.toLowerCase();
+  renderResults();
+}
+
+function renderResults() {
+  let items = [...allResults];
+  
+  // Filtre catégorie
+  if (currentFilter !== 'all') {
+    items = items.filter(r => r.categories.some(c => c.name === currentFilter));
+  }
+  
+  // Filtre recherche
+  if (currentSearch) {
+    items = items.filter(r => 
+      r.title.toLowerCase().includes(currentSearch) || 
+      (r.body || '').toLowerCase().includes(currentSearch) ||
+      r.source.toLowerCase().includes(currentSearch)
+    );
+  }
+  
+  document.getElementById('results-count').textContent = `${items.length} résultat${items.length > 1 ? 's' : ''}`;
+  
+  const grid = document.getElementById('results-grid');
+  
+  if (items.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-full text-center py-16 text-slate-400 dark:text-slate-500">
+        <div class="text-5xl mb-4">🔍</div>
+        <p class="text-lg">Aucun résultat</p>
+        <p class="text-sm">Modifiez vos filtres ou lancez une nouvelle prospection</p>
+      </div>`;
+    return;
+  }
+  
+  grid.innerHTML = items.map(r => {
+    const scoreClass = r.score >= 7 ? 'border-green-500 text-green-600 dark:text-green-400' 
+                     : r.score >= 4 ? 'border-orange-400 text-orange-600 dark:text-orange-400'
+                     : 'border-slate-300 text-slate-500';
+    
+    const cats = r.categories.map(c => 
+      `<span class="px-2 py-0.5 rounded text-xs bg-primary/10 text-primary border border-primary/20">
+        ${c.icon} ${c.name}
+      </span>`
+    ).join('');
+    
+    const contact = r.contact 
+      ? `<span class="px-2 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">📧 Contact</span>`
+      : '';
+    
+    return `
+      <a href="${r.url}" target="_blank" rel="noopener" 
+         class="fade-in bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 
+                p-4 hover:shadow-lg hover:border-primary/30 transition group">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <h3 class="font-medium text-sm leading-snug group-hover:text-primary transition line-clamp-2 flex-1">
+            ${escHtml(r.title)}
+          </h3>
+          <span class="shrink-0 px-2 py-0.5 rounded border text-xs font-bold ${scoreClass}">
+            ${r.score}/10
+          </span>
+        </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
+          ${escHtml((r.body || '').substring(0, 200))}
+        </p>
+        <div class="flex flex-wrap gap-1 mb-3">${cats}</div>
+        <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-700">
+          <div class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            <span>${escHtml(r.source)}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            ${r.date ? `<span>${r.date}</span>` : ''}
+            ${contact}
+          </div>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function exportCSV() {
+  window.location.href = '/api/export/csv';
+}
+
+// ── Custom URL Scraper ──
+async function scrapeCustomUrl() {
+  const textarea = document.getElementById('custom-urls');
+  const urls = textarea.value
+    .split('\n')
+    .map(u => u.trim())
+    .filter(u => u.length > 0);
+  
+  if (urls.length === 0) {
+    alert('Veuillez entrer au moins une URL');
+    return;
+  }
+  
+  if (urls.length > 10) {
+    alert('Maximum 10 URLs par analyse');
+    return;
+  }
+  
+  const strict = document.getElementById('strict-filter').checked;
+  const btn = document.getElementById('btn-custom-scrape');
+  const section = document.getElementById('custom-results-section');
+  const progress = document.getElementById('custom-progress');
+  const progressText = document.getElementById('custom-progress-text');
+  const errorDiv = document.getElementById('custom-error');
+  const resultsGrid = document.getElementById('custom-results-grid');
+  const stats = document.getElementById('custom-stats');
+  
+  // Reset UI
+  section.classList.remove('hidden');
+  progress.classList.remove('hidden');
+  errorDiv.classList.add('hidden');
+  resultsGrid.innerHTML = '';
+  stats.textContent = '';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner mr-1"></span> Analyse...';
+  
+  try {
+    progressText.textContent = urls.length === 1 
+      ? 'Analyse de l\'URL...' 
+      : `Analyse de ${urls.length} URLs...`;
+    
+    const resp = await fetch('/api/custom-scrape', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls, strict }),
+    });
+    
+    const data = await resp.json();
+    
+    if (!resp.ok) {
+      throw new Error(data.error || 'Erreur serveur');
+    }
+    
+    if (!data.success && data.opportunities.length === 0) {
+      errorDiv.textContent = data.error 
+        ? `❌ ${data.error}`
+        : '⚠️ Aucune opportunité trouvée sur cette/ces URL(s)';
+      errorDiv.classList.remove('hidden');
+      progress.classList.add('hidden');
+      return;
+    }
+    
+    // Afficher les erreurs partielles s'il y en a
+    if (data.errors && data.errors.length > 0) {
+      const errorMsg = data.errors.map(e => `${e.url}: ${e.error}`).join('\n');
+      errorDiv.innerHTML = `<strong>⚠️ Certaines URLs ont échoué :</strong><br><pre class="whitespace-pre-wrap text-xs mt-1">${errorMsg}</pre>`;
+      errorDiv.classList.remove('hidden');
+    }
+    
+    // Afficher les stats
+    if (data.pages_scanned !== undefined) {
+      stats.textContent = `${data.pages_scanned} page(s) analysée(s) · ${data.total_opportunities} opportunité(s) pertinente(s)`;
+    }
+    
+    // Afficher les résultats
+    if (data.opportunities.length > 0) {
+      renderCustomResults(data.opportunities, resultsGrid);
+    }
+    
+    progress.classList.add('hidden');
+    
+  } catch (e) {
+    errorDiv.textContent = `❌ Erreur : ${e.message}`;
+    errorDiv.classList.remove('hidden');
+    progress.classList.add('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🔍</span> Analyser les URLs';
+  }
+}
+
+function renderCustomResults(results, container) {
+  container.innerHTML = results.map(r => {
+    const scoreClass = r.score >= 7 ? 'border-green-500 text-green-600 dark:text-green-400'
+                     : r.score >= 4 ? 'border-orange-400 text-orange-600 dark:text-orange-400'
+                     : 'border-slate-300 text-slate-500';
+    
+    const cats = (r.categories || []).map(c => 
+      `<span class="px-2 py-0.5 rounded text-xs bg-primary/10 text-primary border border-primary/20">
+        ${c.icon} ${c.name}
+      </span>`
+    ).join('');
+    
+    const contact = r.contact 
+      ? `<span class="px-2 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">📧 Contact</span>`
+      : '';
+    
+    return `
+      <a href="${r.url}" target="_blank" rel="noopener" 
+         class="fade-in bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 
+                p-4 hover:shadow-lg hover:border-green-500/30 transition group">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <h3 class="font-medium text-sm leading-snug group-hover:text-primary transition line-clamp-2 flex-1">
+            ${escHtml(r.title)}
+          </h3>
+          ${r.score ? `<span class="shrink-0 px-2 py-0.5 rounded border text-xs font-bold ${scoreClass}">
+            ${r.score}/10
+          </span>` : '<span class="shrink-0 px-2 py-0.5 rounded border text-xs font-bold border-green-500 text-green-600">NEW</span>'}
+        </div>
+        ${r.body ? `<p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
+          ${escHtml(r.body.substring(0, 200))}
+        </p>` : ''}
+        ${cats ? `<div class="flex flex-wrap gap-1 mb-3">${cats}</div>` : ''}
+        <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-700">
+          <div class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            <span class="truncate max-w-[150px]">${new URL(r.url).hostname}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            ${contact}
+          </div>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+// ── Init ──
+loadResults();
+</script>
+</body>
+</html>
